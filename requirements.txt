@@ -1,0 +1,5 @@
+pyttsx3==2.90
+pydub==0.25.1
+tk  # tkinter, included by default with Python, noted for Linux users
+platformdirs==3.10.0  # Cross-platform way to handle file paths
+edge-tts==1.1.5  # Add this line for Edge TTS support

@@ -6,10 +6,11 @@
 ## Features
 - **Batch processing of `.txt` files**: Reads all text files from a specified folder and converts them into audio files.
 - **Audio output**: Saves the generated audio in `.mp3` format.
-- **Customizable voice properties**: Adjust speech rate, volume, and voice.
 - **Extensible**: Can be enhanced to include automatic upload to Google Drive and email integration for sharing links.
-- **Docker-compatible**: Easy deployment using Docker for a consistent environment.
-- **Infrastructure as Code (IaC)**: Terraform support for managing cloud resources (optional).
+- Option to choose between English and Russian languages.
+- Configurable to set a male voice as default for Russian text.
+- Cross-platform support (Windows and Linux).
+- Integration with `tkinter` for user-friendly directory selection.
 
 ## Installation
 1. Ensure `ffmpeg` is installed for audio processing with `pydub`.
