@@ -17,7 +17,7 @@
 
 ## Dependencies
 - **Python 3.7+**
-- **pyttsx3**: For text-to-speech conversion
+- **edge-tts**: Primary TTS library for high-quality voice synthesis
 - **pydub**: For audio processing
 - **ffmpeg**: Required by `pydub` for audio export
 
