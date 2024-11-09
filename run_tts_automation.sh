@@ -17,6 +17,3 @@ if [ $? -eq 0 ]; then
 else
     echo "TTS Audio Automation encountered an error. Check the output for more details."
 fi
-
-# Wait for user input before closing (optional)
-read -p "Press any key to continue..."
