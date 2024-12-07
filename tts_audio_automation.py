@@ -1,7 +1,6 @@
 #import pyttsx3
 import edge_tts
 import os
-import asyncio
 
 #def set_language_voice(engine, language='en'):
 #    voices = engine.getProperty('voices')
