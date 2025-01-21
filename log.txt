@@ -1,0 +1,8 @@
+Task started at: 2025-01-20 20:35:11
+An unexpected error occurred: process_txt_files_edge() got an unexpected keyword argument 'log_error'
+Task started at: 2025-01-20 20:37:38
+An unexpected error occurred: process_txt_files_edge() got an unexpected keyword argument 'log_error'
+Task started at: 2025-01-20 20:48:50
+An unexpected error occurred: process_txt_files_edge() got an unexpected keyword argument 'log_error'
+Task started at: 2025-01-20 20:51:10
+Task completed in 2816.84 seconds.
