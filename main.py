@@ -1,5 +1,7 @@
-#from tts_audio_automation_split import process_txt_files
 from tts_audio_automation_split import process_txt_files_edge
+from utils.progress import ProgressBar
+from utils.merge_mp3 import merge_mp3_files_selected
+
 from tkinter import Tk, filedialog
 import asyncio
 import time
@@ -44,6 +46,7 @@ async def main_async():
     try:
         task_start_time = time.time()
         log_task_details(f"Task started at: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
         await process_txt_files_edge(
             input_folder=input_folder,
             output_folder=output_folder,
@@ -51,9 +54,29 @@ async def main_async():
             log_error=log_error,
             log_task_details=log_task_details
         )
+
         task_duration = time.time() - task_start_time
         log_task_details(f"Task completed in {task_duration:.2f} seconds.")
         print("All files have been processed successfully.")
+
+        mp3_files = [f for f in os.listdir(output_folder) if f.endswith(".mp3")]
+
+        if len(mp3_files) <= 1:
+            print(f"\nOnly {len(mp3_files)} MP3 file{' was' if len(mp3_files)==1 else 's were'} generated — skipping merge.")
+        else:
+            merge_choice = input("\nWould you like to merge the MP3 chunks? (Y/N): ").strip().lower()
+            if merge_choice == 'y':
+                # ✅ Reinitialize Tk so the file dialog works again
+                merge_root = Tk()
+                merge_root.withdraw()
+                merge_root.lift()
+                merge_root.attributes("-topmost", True)
+                merge_root.after(100, merge_root.attributes, '-topmost', False)
+                merge_root.update()
+                merge_mp3_files_selected()
+            else:
+                print(" Skipping merge step.")
+
     except Exception as main_error:
         log_error(f"An unexpected error occurred: {main_error}")
         print(f"An unexpected error occurred: {main_error}")

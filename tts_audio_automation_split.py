@@ -1,50 +1,32 @@
 import edge_tts
 import os
+import re
+import time
+from utils.progress import ProgressBar
 
-def split_text_after_sentence(text):
-    # This function splits text into two halves after completing a whole sentence.
-    sentences = text.split('.')
-    half_point = len(text) // 2
+MAX_EDGE_TTS_CHUNK = 4900  # Safe character limit to avoid truncation
 
-    first_half = ''
-    second_half = ''
-
-    char_count = 0
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if char_count + len(sentence) + 1 <= half_point or not second_half:
-            first_half += sentence + '. '
-            char_count += len(sentence) + 1
-        else:
-            second_half += sentence + '. '
-
-    # Fallback if sentence-based splitting fails
-    if not first_half.strip() or not second_half.strip():
-        print("Warning: Fallback splitting used.")
-        first_half = text[:half_point].strip()
-        second_half = text[half_point:].strip()
-
-    if not first_half or not second_half:
-        raise ValueError("Failed to split text into two halves.")
-
-    return first_half.strip(), second_half.strip()
-
-def split_text_in_chunks(text, chunk_size):
-    # Split text into chunks approximately equal to chunk_size while maintaining sentence boundaries
-    sentences = text.split('.')
+def split_text_in_chunks(text, chunk_size=MAX_EDGE_TTS_CHUNK):
+    """
+    Splits text into chunks of approximately `chunk_size` characters, preserving sentence boundaries.
+    """
+    sentences = re.split(r'(?<=[.!?])\s+', text)
     chunks = []
     current_chunk = ''
 
     for sentence in sentences:
-        sentence = sentence.strip()
         if len(current_chunk) + len(sentence) + 1 <= chunk_size:
-            current_chunk += sentence + '. '
+            current_chunk += sentence + ' '
         else:
             chunks.append(current_chunk.strip())
-            current_chunk = sentence + '. '
+            current_chunk = sentence + ' '
 
-    if current_chunk:
+    if current_chunk.strip():
         chunks.append(current_chunk.strip())
+
+    # Optional: Merge final chunk if very small
+    if len(chunks) >= 2 and len(chunks[-1]) < 1000 and len(chunks[-2]) + len(chunks[-1]) <= chunk_size:
+        chunks[-2] += ' ' + chunks.pop()
 
     if not chunks:
         raise ValueError("Failed to split text into chunks.")
@@ -52,14 +34,11 @@ def split_text_in_chunks(text, chunk_size):
     return chunks
 
 async def process_txt_files_edge(input_folder, output_folder, language='en', log_error=None, log_task_details=None):
-    # Map language to the desired voice
     voice = "en-US-GuyNeural" if language == 'en' else "ru-RU-DmitryNeural"
 
-    # Ensure output folder exists
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # Process each .txt file in the folder
     txt_files = [f for f in os.listdir(input_folder) if f.endswith('.txt')]
     if not txt_files:
         print("No .txt files found in the specified folder.")
@@ -68,83 +47,41 @@ async def process_txt_files_edge(input_folder, output_folder, language='en', log
     for filename in txt_files:
         file_path = os.path.join(input_folder, filename)
         try:
-            # Read the content of the .txt file
             with open(file_path, 'r', encoding='utf-8') as file:
                 text_content = file.read()
 
-            # Handle empty files
             if not text_content.strip():
                 print(f"Skipped {filename}: File is empty.")
                 continue
 
-            # Set the name for the output audio file
             base_audio_filename = os.path.splitext(filename)[0]
+            char_length = len(text_content)
+            total_bytes = len(text_content.encode('utf-8'))
 
-            # Check file size and split if necessary
-            file_size = os.path.getsize(file_path)
-
-            if file_size < 1000 * 1024:  # Less than 1000kB
-                # Save the spoken text to an audio file
+            if char_length <= MAX_EDGE_TTS_CHUNK:
                 audio_filename = base_audio_filename + '.mp3'
                 audio_path = os.path.join(output_folder, audio_filename)
                 communicate = edge_tts.Communicate(text_content, voice)
                 await communicate.save(audio_path)
-                print(f'Successfully generated audio for {filename} as {audio_filename}')
-            elif 1000 * 1024 <= file_size < 2000 * 1024:  # Between 1000kB and 2000kB
-                try:
-                    first_half, second_half = split_text_after_sentence(text_content)
+                print(f"Generated single MP3: {audio_filename}")
+            else:
+                chunks = split_text_in_chunks(text_content, chunk_size=MAX_EDGE_TTS_CHUNK)
+                progress = ProgressBar(total=total_bytes, prefix=f"Processing {filename}")
+                processed_bytes = 0
+                progress.update(0)  # ✅ Show progress bar at 0% immediately
 
-                    # Generate first half audio
-                    audio_filename_1 = base_audio_filename + '_part1.mp3'
-                    audio_path_1 = os.path.join(output_folder, audio_filename_1)
-                    communicate = edge_tts.Communicate(first_half, voice)
-                    await communicate.save(audio_path_1)
-                    print(f'Successfully generated audio for {filename} as {audio_filename_1}')
+                for i, chunk in enumerate(chunks):
+                    audio_filename = f"{base_audio_filename}_part{i + 1}.mp3"
+                    audio_path = os.path.join(output_folder, audio_filename)
 
-                    # Generate second half audio
-                    audio_filename_2 = base_audio_filename + '_part2.mp3'
-                    audio_path_2 = os.path.join(output_folder, audio_filename_2)
-                    communicate = edge_tts.Communicate(second_half, voice)
-                    await communicate.save(audio_path_2)
-                    print(f'Successfully generated audio for {filename} as {audio_filename_2}')
-                except ValueError as ve:
-                    error_message = f"Error splitting text for {filename}: {ve}"
-                    print(error_message)
-                    if log_error:
-                        log_error(error_message)
-                    continue
-            elif file_size >= 2000 * 1024:  # Greater than or equal to 2000kB
-                try:
-                    chunks = split_text_in_chunks(text_content, 800 * 1024)  # Approximately 800kB chunks
+                    communicate = edge_tts.Communicate(chunk, voice)
+                    await communicate.save(audio_path)
 
-                    for i, chunk in enumerate(chunks[:-1]):
-                        audio_filename = f"{base_audio_filename}_part{i + 1}.mp3"
-                        audio_path = os.path.join(output_folder, audio_filename)
-                        communicate = edge_tts.Communicate(chunk, voice)
-                        await communicate.save(audio_path)
-                        print(f'Successfully generated audio for {filename} as {audio_filename}')
+                    processed_bytes += len(chunk.encode("utf-8"))
+                    progress.update(processed_bytes)
 
-                    # Handle the last chunk (split approximately in half)
-                    last_chunk = chunks[-1]
-                    first_half, second_half = split_text_after_sentence(last_chunk)
+                print(f"\nFinished generating audio for {filename} ({len(chunks)} chunks).")
 
-                    audio_filename_1 = f"{base_audio_filename}_part{len(chunks)}a.mp3"
-                    audio_path_1 = os.path.join(output_folder, audio_filename_1)
-                    communicate = edge_tts.Communicate(first_half, voice)
-                    await communicate.save(audio_path_1)
-                    print(f'Successfully generated audio for {filename} as {audio_filename_1}')
-
-                    audio_filename_2 = f"{base_audio_filename}_part{len(chunks)}b.mp3"
-                    audio_path_2 = os.path.join(output_folder, audio_filename_2)
-                    communicate = edge_tts.Communicate(second_half, voice)
-                    await communicate.save(audio_path_2)
-                    print(f'Successfully generated audio for {filename} as {audio_filename_2}')
-                except ValueError as ve:
-                    error_message = f"Error splitting text into chunks for {filename}: {ve}"
-                    print(error_message)
-                    if log_error:
-                        log_error(error_message)
-                    continue
         except Exception as e:
             error_message = f"Error processing {filename}: {e}"
             print(error_message)
