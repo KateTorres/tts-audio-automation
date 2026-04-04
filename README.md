@@ -18,6 +18,7 @@
 ## Dependencies
 - **Python 3.7+**
 - **edge-tts**: Primary TTS library for high-quality voice synthesis
+   Note: if program is running slow or saves incomplete files, update the library (python -m pip install -U edge-tts)
 - **pydub**: For audio processing
 - **ffmpeg**: Required by `pydub` for audio export
 

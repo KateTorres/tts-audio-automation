@@ -23,3 +23,7 @@ venv/
 .DS_Store
 Thumbs.db!/docs/*.pdf
 !/.venv/
+
+*.pyc
+._pycache__/
+.utils/_pycache__/
