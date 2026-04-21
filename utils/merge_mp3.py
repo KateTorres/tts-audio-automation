@@ -1,14 +1,21 @@
 import os
 from tkinter import Tk, filedialog
 
-def merge_mp3_files_selected(output_filename="merged_output.mp3"):
+def merge_mp3_files_selected(output_filename="merged_output.mp3", parent=None):
     """
     Prompts user to select multiple MP3 chunk files (named *_partX.mp3),
     sorts them by X, merges them, and optionally deletes originals.
     """
-    # ✅ Ensure file dialogs appear in the foreground
-    root = Tk()
-    root.withdraw()
+    from pydub import AudioSegment
+
+    # Reuse existing Tk root or create one
+    if parent is None:
+        root = Tk()
+        root.withdraw()
+        own_root = True
+    else:
+        root = parent
+        own_root = False
     root.lift()
     root.attributes("-topmost", True)
     root.update()
@@ -21,6 +28,8 @@ def merge_mp3_files_selected(output_filename="merged_output.mp3"):
 
     if not selected_files:
         print("No files selected. Exiting.")
+        if own_root:
+            root.destroy()
         return
 
     def get_part_number(filename):
@@ -44,15 +53,21 @@ def merge_mp3_files_selected(output_filename="merged_output.mp3"):
 
     if not output_path:
         print("No output file selected. Exiting.")
+        if own_root:
+            root.destroy()
         return
 
-    with open(output_path, 'wb') as outfile:
-        for file_path in sorted_files:
-            print(f"Adding: {os.path.basename(file_path)}")
-            with open(file_path, 'rb') as infile:
-                outfile.write(infile.read())
+    # Destroy Tk root before long-running merge and input() calls
+    if own_root:
+        root.destroy()
 
-    print(f"\n✅ Merged MP3 saved to: {output_path}")
+    combined = AudioSegment.empty()
+    for file_path in sorted_files:
+        print(f"Adding: {os.path.basename(file_path)}")
+        combined += AudioSegment.from_mp3(file_path)
+
+    combined.export(output_path, format="mp3")
+    print(f"\n[V] Merged MP3 saved to: {output_path}")
 
     response = input("\nDo you want to delete the original chunk files? (Y/N): ").strip().lower()
     if response == 'y':
