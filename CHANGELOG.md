@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-04-03
+
+### Fixed
+- Fixed duplicate Tk root windows causing erratic GUI behavior during merge step.
+- Replaced raw byte MP3 concatenation with `pydub.AudioSegment` for correct headers and duration metadata.
+- Fixed merge prompt triggering on pre-existing MP3 files in the output folder instead of only newly created ones.
+- Added fallback word-boundary splitting for sentences exceeding 4900 characters to prevent truncated audio.
+- Fixed division by zero crash in `ProgressBar` when total bytes is zero.
+
+### New dependency
+- `ffmpeg` is now required for MP3 merging via `pydub`. Install with:
+  - Windows: `winget install ffmpeg`
+  - Linux: `sudo apt install ffmpeg`
+
+### Removed
+- Deleted legacy `tts_audio_automation.py` (broken syntax, unused duplicate of `tts_audio_automation_split.py`).
+
 ## [1.2.0] - 2025-07-25
 
 **Reason for modificatrion** : There was a change in edge-tts or my environment. Files started to cut off before reaching the end. Troubleshooting revealed that file splitting no longer worked based on size in bytes.

@@ -44,6 +44,9 @@ async def main_async():
 
     # Call the processing function with asyncio for Edge TTS
     try:
+        # Snapshot existing MP3s before processing
+        existing_mp3s = set(f for f in os.listdir(output_folder) if f.endswith(".mp3")) if os.path.exists(output_folder) else set()
+
         task_start_time = time.time()
         log_task_details(f"Task started at: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -59,21 +62,19 @@ async def main_async():
         log_task_details(f"Task completed in {task_duration:.2f} seconds.")
         print("All files have been processed successfully.")
 
-        mp3_files = [f for f in os.listdir(output_folder) if f.endswith(".mp3")]
+        # Only consider MP3s created during this run
+        current_mp3s = set(f for f in os.listdir(output_folder) if f.endswith(".mp3"))
+        new_mp3_files = current_mp3s - existing_mp3s
 
-        if len(mp3_files) <= 1:
-            print(f"\nOnly {len(mp3_files)} MP3 file{' was' if len(mp3_files)==1 else 's were'} generated — skipping merge.")
+        if len(new_mp3_files) <= 1:
+            print(f"\nOnly {len(new_mp3_files)} MP3 file{' was' if len(new_mp3_files)==1 else 's were'} generated — skipping merge.")
         else:
             merge_choice = input("\nWould you like to merge the MP3 chunks? (Y/N): ").strip().lower()
             if merge_choice == 'y':
-                # ✅ Reinitialize Tk so the file dialog works again
                 merge_root = Tk()
                 merge_root.withdraw()
-                merge_root.lift()
-                merge_root.attributes("-topmost", True)
-                merge_root.after(100, merge_root.attributes, '-topmost', False)
-                merge_root.update()
-                merge_mp3_files_selected()
+                merge_mp3_files_selected(parent=merge_root)
+                merge_root.destroy()
             else:
                 print(" Skipping merge step.")
 

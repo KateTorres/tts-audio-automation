@@ -6,15 +6,40 @@ from utils.progress import ProgressBar
 
 MAX_EDGE_TTS_CHUNK = 4900  # Safe character limit to avoid truncation
 
+def _split_long_sentence(sentence, chunk_size):
+    """Split a sentence that exceeds chunk_size by breaking on whitespace."""
+    pieces = []
+    words = sentence.split()
+    current = ''
+    for word in words:
+        if len(current) + len(word) + 1 <= chunk_size:
+            current += word + ' '
+        else:
+            if current.strip():
+                pieces.append(current.strip())
+            current = word + ' '
+    if current.strip():
+        pieces.append(current.strip())
+    return pieces
+
 def split_text_in_chunks(text, chunk_size=MAX_EDGE_TTS_CHUNK):
     """
     Splits text into chunks of approximately `chunk_size` characters, preserving sentence boundaries.
+    Falls back to word-boundary splitting for sentences exceeding chunk_size.
     """
     sentences = re.split(r'(?<=[.!?])\s+', text)
     chunks = []
     current_chunk = ''
 
     for sentence in sentences:
+        # If a single sentence exceeds chunk_size, break it down further
+        if len(sentence) > chunk_size:
+            if current_chunk.strip():
+                chunks.append(current_chunk.strip())
+                current_chunk = ''
+            chunks.extend(_split_long_sentence(sentence, chunk_size))
+            continue
+
         if len(current_chunk) + len(sentence) + 1 <= chunk_size:
             current_chunk += sentence + ' '
         else:
@@ -68,7 +93,7 @@ async def process_txt_files_edge(input_folder, output_folder, language='en', log
                 chunks = split_text_in_chunks(text_content, chunk_size=MAX_EDGE_TTS_CHUNK)
                 progress = ProgressBar(total=total_bytes, prefix=f"Processing {filename}")
                 processed_bytes = 0
-                progress.update(0)  # ✅ Show progress bar at 0% immediately
+                progress.update(0)  # Show progress bar at 0% immediately
 
                 for i, chunk in enumerate(chunks):
                     audio_filename = f"{base_audio_filename}_part{i + 1}.mp3"
